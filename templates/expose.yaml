@@ -1,0 +1,31 @@
+{{- if .Values.expose.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "postgres-cluster.name" . }}-external
+  namespace: {{ include "postgres-cluster.namespace" . }}
+  labels:
+    {{- include "postgres-cluster.labels" . | nindent 4 }}
+  {{- if eq .Values.expose.type "LoadBalancer" }}
+  annotations:
+    {{- if .Values.expose.loadBalancer.internal }}
+    cloud.google.com/load-balancer-type: "Internal"
+    {{- end }}
+    {{- with .Values.expose.loadBalancer.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  type: {{ .Values.expose.type }}
+  selector:
+    cnpg.io/cluster: {{ include "postgres-cluster.name" . }}
+    role: primary
+  ports:
+    - name: postgres
+      protocol: TCP
+      port: 5432
+      targetPort: 5432
+      {{- if eq .Values.expose.type "NodePort" }}
+      nodePort: {{ .Values.expose.nodePort.port }}
+      {{- end }}
+{{- end }}

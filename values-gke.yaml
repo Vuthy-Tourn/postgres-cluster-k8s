@@ -1,0 +1,46 @@
+# =============================================================
+# values-gke.yaml — Production on GKE with native PD storage
+#
+# Usage:
+#   helm install postgres-cluster ./postgres-cluster \
+#     -f values-gke.yaml \
+#     --set credentials.password=YourPassword
+# =============================================================
+
+cluster:
+  instances: 3
+  podAntiAffinityType: required
+  whenUnsatisfiable: DoNotSchedule
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  monitoring:
+    enabled: true
+
+credentials:
+  username: postgres
+  password: ""               # Set via --set credentials.password=xxx
+  existingSecret: ""         # Or use existing GCP secret
+
+storage:
+  storageType: gke
+  storageClassName: postgres-storage
+  data:
+    size: 20Gi
+  wal:
+    size: 5Gi
+  reclaimPolicy: Retain
+  gke:
+    diskType: pd-ssd
+
+expose:
+  enabled: true
+  type: LoadBalancer
+  loadBalancer:
+    internal: true           # Internal LB — VPC only
+    annotations:
+      cloud.google.com/load-balancer-type: "Internal"

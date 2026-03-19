@@ -1,0 +1,18 @@
+apiVersion: v2
+name: postgres-cluster
+description: >
+  PostgreSQL HA Cluster using CloudNativePG operator.
+  Supports local-path (dev), Longhorn (self-managed), and GKE PD (cloud) storage.
+type: application
+version: 1.0.0
+appVersion: "16.3"
+keywords:
+  - postgresql
+  - cnpg
+  - cloudnativepg
+  - ha
+  - database
+maintainers:
+  - name: your-name
+    email: your-email@example.com
+dependencies: []

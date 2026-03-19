@@ -1,0 +1,37 @@
+{{- $storageType := .Values.storage.storageType }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ include "postgres-cluster.storageClassName" . }}
+  labels:
+    {{- include "postgres-cluster.labels" . | nindent 4 }}
+{{- if eq $storageType "local" }}
+provisioner: rancher.io/local-path
+reclaimPolicy: {{ .Values.storage.reclaimPolicy }}
+volumeBindingMode: WaitForFirstConsumer
+{{- else if eq $storageType "longhorn" }}
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: {{ .Values.storage.reclaimPolicy }}
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: {{ .Values.storage.longhorn.numberOfReplicas | quote }}
+  staleReplicaTimeout: {{ .Values.storage.longhorn.staleReplicaTimeout | quote }}
+  dataLocality: {{ .Values.storage.longhorn.dataLocality | quote }}
+  fsType: "ext4"
+{{- else if eq $storageType "gke" }}
+provisioner: pd.csi.storage.gke.io
+allowVolumeExpansion: true
+reclaimPolicy: {{ .Values.storage.reclaimPolicy }}
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  type: {{ .Values.storage.gke.diskType }}
+{{- else if eq $storageType "custom" }}
+provisioner: {{ .Values.storage.custom.provisioner }}
+reclaimPolicy: {{ .Values.storage.reclaimPolicy }}
+volumeBindingMode: {{ .Values.storage.custom.volumeBindingMode | default "WaitForFirstConsumer" }}
+{{- if .Values.storage.custom.parameters }}
+parameters:
+  {{- toYaml .Values.storage.custom.parameters | nindent 2 }}
+{{- end }}
+{{- end }}

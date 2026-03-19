@@ -1,0 +1,71 @@
+╔══════════════════════════════════════════════════════════════╗
+║         PostgreSQL HA Cluster — Deployed Successfully        ║
+╚══════════════════════════════════════════════════════════════╝
+
+Cluster:   {{ include "postgres-cluster.name" . }}
+Namespace: {{ include "postgres-cluster.namespace" . }}
+Instances: {{ .Values.cluster.instances }}
+Storage:   {{ .Values.storage.storageType }} ({{ .Values.storage.data.size }})
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Wait for cluster to be ready:
+  kubectl get cluster {{ include "postgres-cluster.name" . }} \
+    -n {{ include "postgres-cluster.namespace" . }} -w
+
+Check pods:
+  kubectl get pods -n {{ include "postgres-cluster.namespace" . }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONNECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Get credentials:
+  kubectl get secret {{ include "postgres-cluster.secretName" . }} \
+    -n {{ include "postgres-cluster.namespace" . }} \
+    -o jsonpath='{.data.password}' | base64 -d && echo ""
+
+Port-forward (read-write / primary):
+  kubectl port-forward svc/{{ include "postgres-cluster.name" . }}-rw \
+    5432:5432 -n {{ include "postgres-cluster.namespace" . }}
+
+Port-forward (read-only / replicas):
+  kubectl port-forward svc/{{ include "postgres-cluster.name" . }}-ro \
+    5433:5432 -n {{ include "postgres-cluster.namespace" . }}
+
+Connect:
+  psql -h localhost -p 5432 -U {{ .Values.cluster.bootstrap.owner }} \
+    -d {{ .Values.cluster.bootstrap.database }}
+
+VS Code settings:
+  Host:     localhost
+  Port:     5432
+  Database: {{ .Values.cluster.bootstrap.database }}
+  Username: {{ .Values.cluster.bootstrap.owner }}
+  SSL Mode: disable
+
+{{- if .Values.expose.enabled }}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXTERNAL ACCESS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Get external IP (may take 1-2 minutes):
+  kubectl get svc {{ include "postgres-cluster.name" . }}-external \
+    -n {{ include "postgres-cluster.namespace" . }} -w
+{{- end }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+USEFUL COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Check replication:
+  kubectl exec -n {{ include "postgres-cluster.namespace" . }} \
+    {{ include "postgres-cluster.name" . }}-1 -- \
+    psql -U postgres -c "SELECT application_name, state, replay_lag FROM pg_stat_replication;"
+
+Trigger failover:
+  kubectl delete pod {{ include "postgres-cluster.name" . }}-1 \
+    -n {{ include "postgres-cluster.namespace" . }}
+
+Upgrade chart:
+  helm upgrade {{ .Release.Name }} ./postgres-cluster -f values-local.yaml

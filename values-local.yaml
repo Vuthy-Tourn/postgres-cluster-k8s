@@ -1,0 +1,35 @@
+# =============================================================
+# values-local.yaml — Local development / testing
+#
+# Usage:
+#   helm install postgres-cluster ./postgres-cluster \
+#     -f values-local.yaml
+# =============================================================
+
+cluster:
+  instances: 2
+  podAntiAffinityType: preferred
+  whenUnsatisfiable: ScheduleAnyway
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+credentials:
+  username: postgres
+  password: LocalPassword123
+
+storage:
+  storageType: local
+  storageClassName: postgres-storage
+  data:
+    size: 5Gi
+  wal:
+    size: 2Gi
+  reclaimPolicy: Delete      # Delete on cleanup for dev
+
+expose:
+  enabled: false

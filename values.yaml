@@ -1,0 +1,122 @@
+# =============================================================
+# values.yaml — Default values for postgres-cluster Helm chart
+#
+# Override per environment:
+#   Local dev:   helm install ... -f values-local.yaml
+#   Longhorn:    helm install ... -f values-longhorn.yaml
+#   GKE:         helm install ... -f values-gke.yaml
+# =============================================================
+
+# ── Namespace ─────────────────────────────────────────────────
+namespace:
+  create: true
+  name: postgres
+
+# ── PostgreSQL Cluster ────────────────────────────────────────
+cluster:
+  name: postgres-cluster
+  instances: 2          # 1 primary + 1 replica (increase to 3 for production)
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.3
+
+  # PostgreSQL parameters
+  postgresql:
+    max_connections: "200"
+    shared_buffers: "256MB"
+    effective_cache_size: "768MB"
+    maintenance_work_mem: "64MB"
+    checkpoint_completion_target: "0.9"
+    wal_buffers: "16MB"
+    default_statistics_target: "100"
+    random_page_cost: "1.1"
+    effective_io_concurrency: "200"
+    work_mem: "4MB"
+    wal_level: "replica"
+    log_connections: "on"
+    log_disconnections: "on"
+    log_duration: "off"
+    log_min_duration_statement: "1000"
+
+  # Bootstrap database
+  bootstrap:
+    database: app
+    owner: postgres
+    encoding: UTF8
+
+  # Resources
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+  # HA settings
+  switchoverDelay: 40
+  failoverDelay: 0
+
+  # Topology — soft rules for dev, change to required for production
+  podAntiAffinityType: preferred      # preferred | required
+  whenUnsatisfiable: ScheduleAnyway  # ScheduleAnyway | DoNotSchedule
+
+  # Monitoring
+  monitoring:
+    enabled: false
+
+# ── Credentials ───────────────────────────────────────────────
+credentials:
+  # Set these or use existingSecret
+  username: postgres
+  password: ChangeMe123      # CHANGE THIS before deploying!
+  existingSecret: ""         # Use existing secret instead: "my-secret-name"
+
+# ── Storage ───────────────────────────────────────────────────
+storage:
+  # storageType controls which StorageClass gets created:
+  #   local    → rancher.io/local-path   (dev/testing, no replication)
+  #   longhorn → driver.longhorn.io      (self-managed, HA)
+  #   gke      → pd.csi.storage.gke.io   (GKE native SSD)
+  #   custom   → bring your own (set storageClassName manually)
+  storageType: local
+
+  storageClassName: postgres-storage  # Name used by the cluster
+
+  data:
+    size: 8Gi
+  wal:
+    size: 4Gi
+    enabled: true            # Separate WAL volume (recommended)
+
+  reclaimPolicy: Retain      # Retain | Delete
+
+  # Longhorn specific
+  longhorn:
+    numberOfReplicas: "2"
+    staleReplicaTimeout: "30"
+    dataLocality: "best-effort"
+
+  # GKE specific
+  gke:
+    diskType: pd-ssd         # pd-ssd | pd-balanced | pd-standard
+
+# ── Expose ────────────────────────────────────────────────────
+expose:
+  # Expose PostgreSQL outside the cluster
+  enabled: false
+  type: LoadBalancer         # LoadBalancer | NodePort | ClusterIP
+
+  # LoadBalancer settings
+  loadBalancer:
+    internal: false          # true = internal GCP LB (VPC only)
+    annotations: {}
+
+  # NodePort settings
+  nodePort:
+    port: 30432
+
+# ── Backup ────────────────────────────────────────────────────
+backup:
+  enabled: false
+  # destinationPath: "gs://your-bucket/postgres-backups"
+  # credentialSecret: "gcs-credentials"
+  # retentionPolicy: "30d"

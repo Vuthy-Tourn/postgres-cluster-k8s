@@ -1,0 +1,41 @@
+# =============================================================
+# values-longhorn.yaml — Production with Longhorn storage
+#
+# Usage:
+#   helm install postgres-cluster ./postgres-cluster \
+#     -f values-longhorn.yaml
+# =============================================================
+
+cluster:
+  instances: 3
+  podAntiAffinityType: required
+  whenUnsatisfiable: DoNotSchedule
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  monitoring:
+    enabled: true
+
+credentials:
+  username: postgres
+  password: ProdPassword123    # Use --set credentials.password=xxx or existingSecret
+
+storage:
+  storageType: longhorn
+  storageClassName: postgres-storage
+  data:
+    size: 20Gi
+  wal:
+    size: 5Gi
+  reclaimPolicy: Retain
+  longhorn:
+    numberOfReplicas: "2"
+    staleReplicaTimeout: "30"
+    dataLocality: "best-effort"
+
+expose:
+  enabled: false
