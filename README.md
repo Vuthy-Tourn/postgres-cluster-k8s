@@ -1,4 +1,4 @@
-# postgres-cluster Helm Chart
+# Postgres-HA-Cluster with Helm Chart in K8s cluster
 
 PostgreSQL HA Cluster using CloudNativePG. One chart, three storage backends.
 
